@@ -26,9 +26,9 @@ SECRET_KEY = 'django-insecure-5t$d#rlp0jdw4$zlquoi89-oytp+s52b8unb=s7697^w9!yx+!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ['*']
 
-
+PORT = os.environ.get('PORT', 8080)
 # Application definition
 
 INSTALLED_APPS = [
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -99,6 +100,9 @@ AUTH_PASSWORD_VALIDATORS = [
             'min_length': 5,
         }
     },
+]
+CSRF_TRUSTED_ORIGINS = [
+    'https://iscs-app-1022611096549.asia-southeast1.run.app',
 ]
 
 
