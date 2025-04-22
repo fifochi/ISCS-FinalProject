@@ -1,0 +1,502 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.0.0/css/dataTables.bootstrap5.css">
+{% extends 'inventoryapp/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<head>
+  <title>Current Inventory</title>
+</head>
+
+<body class="bg-light">
+    <!-- Modal -->
+    <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5 class="modal-title" id="productModalLabel"></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="color: gray;"></button>
+          </div>
+
+          <div class="modal-body">
+            <div id="productInfo">
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <a class="btn btn-primary">Edit</a> 
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="container-fluid">
+      <div class="row p-1" style="background-color: #eee;">
+        <div class="col-md-auto d-flex align-items-center">
+          <h4 class="m-0 mr-3">Current Inventory</h4>
+        </div>
+      </div>
+    
+      {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-success" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+<!-- Buttons row -->
+<div class="row mt-3">
+  <!-- Buttons column -->
+  <div class="col-md-auto">
+    <a href="{% url 'add_product' %}" class="btn btn-primary">Add Product</a>
+  </div>
+  <div class="col-md-auto">
+    <a href="{% url 'edit_count' %}" class="btn btn-primary">Edit Count</a>
+  </div>
+  <div class="col-md-auto">
+    <a href="{% url 'generate_inventory_summary' %}" class="btn btn-primary">Generate Inventory Summary</a>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <!-- <div class="col-md-auto">
+    <select id="stockStatusFilter" class="form-select" aria-label="Filter by Stock Status">
+      <option value="">All Stock Status</option>
+      <option value="no_stock" {% if stock_status_param == "no_stock" %}selected{% endif %}>No Stock</option>
+      <option value="low_stock" {% if stock_status_param == "low_stock" %}selected{% endif %}>Low Stock</option>
+      <option value="regular_stock" {% if stock_status_param == "regular_stock" %}selected{% endif %}>Regular Stock</option>
+  </select>
+</div> -->
+<script>
+// Add event listener for stock status filter
+$('#stockStatusFilter').on('change', function() {
+    var stockStatus = $(this).val();
+    var url = window.location.pathname;
+    var params = new URLSearchParams(window.location.search);
+    params.set('stock_status', stockStatus);
+    window.location.href = url + '?' + params.toString();
+});
+
+</script>
+  <div class="row">
+    <div class="col">
+      <div class="row">
+        <div class="col-md-auto">
+          <select id="categoryFilter" class="form-select" aria-label="Filter by Category">
+            <option value="">All Categories</option>
+            <!-- Populate options dynamically using Django template -->
+            {% for category in categories %}
+              <option value="{{ category.Category_ID }}"
+                      {% if category.Category_ID|stringformat:"s" == request.GET.category|stringformat:"s" %}
+                        selected
+                      {% endif %}>
+                {{ category.Category_Name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-auto">
+          <select id="consigneeFilter" class="form-select" aria-label="Filter by Consignee">
+            <option value="">All Consignees</option>
+            <!-- Populate options dynamically using Django template -->
+            {% for consignee in consignees %}
+              <option value="{{ consignee.Consignee_ID }}"
+                      {% if consignee.Consignee_ID|stringformat:"s" == request.GET.consignee|stringformat:"s" %}
+                        selected
+                      {% endif %}>
+                {{ consignee.Consignee_Tag_ID }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-auto">
+          <button id="resetFilters" class="btn btn-danger">Reset Filters</button>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-md-auto d-flex align-items-center">
+          <input class="mx-2" type="checkbox" id="showHidden" name="showHidden" {% if show_hidden %}checked{% endif %}>
+          <label for="showHidden">Show Hidden Products</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-auto" style="margin-left: 40px;">
+      <div class="row">
+        <div class="card-group" style="text-align: center;">
+          <div class="card">
+            <div id="total_products_filter" class="card-body" style="background-color: #f0f0f0; cursor: pointer;">
+              <h5 class="card-text" style="font-size: 13.5px;">Total Products Count <br><span id="total_products_count" style="font-size: 19px;"></span></h5>
+            </div>
+          </div>
+          <div class="card">
+            <a href="#" id="noStockFilters" class="card-body" style="background-color: #f0f0f0;">
+              <h5 class="card-text" style="font-size: 13.5px;">No Stock Count <br> <br> <span id="no_stock_count" style="font-size: 19px;"></span></h5>
+              <input type="hidden" id="noStock_inp" value="no_stock">
+            </a>
+          </div>
+          <div class="card">
+            <a href="#" id="lowStockFilters"  class="card-body" style="background-color: #f0f0f0;">
+              <h5 class="card-text" style="font-size: 13.5px;">Low Stock Count <br> <br> <span id="low_stock_count" style="font-size: 19px;"></span></h5>
+              <input type="hidden" id="lowStock_inp" value="low_stock">
+            </a>
+          </div>
+          <div class="card">
+            <a href="#" id="regStockFilters"  class="card-body" style="background-color: #f0f0f0;">
+              <h5 class="card-text" style="font-size: 13.5px;">Regular Stock Count <br> <span id="regular_stock_count" style="font-size: 19px;"></span></h5>
+              <input type="hidden" id="regStock_inp" value="regular_stock">
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+      <style>
+        #currentinventory .iconsignee {
+          flex: 1;
+          min-width: 30px; /* Adjust this value based on your preference */
+        }
+        /* Badge container to control layout */
+          .badge-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+
+          /* Style for badges */
+          .badge {
+            margin: 2px; /* Adjust margin as needed */
+          }
+      </style>
+    <!-- Table Inventory row -->
+    <div class="row mt-3">
+      <div class="table-responsive">
+        <table id="currentinventory" class="table text-center">
+          <thead>
+            <tr>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Name</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">ID</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;" data-orderable="false">Picture</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Actual Count</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Reserved</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">To Be Received</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;" data-orderable="false" data-searchable="false">Categories</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Consignee</th>
+              <th scope="col" style="background-color: #C2C1C1;" data-orderable="false"> </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in products %}
+            {% if p.Visibility or show_hidden == True %}
+              <tr>  
+                <td class="iname" style="text-align: center;">{{ p.Name }}</td>
+                <td class="iid" style="text-align: center;">{{ p.EAS_Product_ID }}</td>    
+                <td class="ipicture" style="text-align: center;">         
+                  {% if p.Picture %}
+                    <img src="{{ p.Picture.url }}" width="50">
+                  {% endif %}
+                </td> 
+                {% if p.Product_Stock_Status == 'Low Stock' %}
+                  <td class="iact_inv_cnt" style="text-align: center;">
+                    {{ p.Actual_Inventory_Count }}
+                    <img src="{% static 'images/low_product_threshold.png' %}" style="width: 20px; height: 20px;">
+                  </td>
+                {% elif p.Product_Stock_Status == 'No Stock' %}
+                  <td class="iact_inv_cnt" style="text-align: center;">
+                    {{ p.Actual_Inventory_Count }}
+                    <img src="{% static 'images/no_stock.png' %}" style="width: 25px; height:30px;">
+                  </td>
+                {% elif p.Product_Stock_Status == 'Regular Stock' %}
+                  <td class="iact_inv_cnt" style="text-align: center;">{{ p.Actual_Inventory_Count }}</td>
+                {% endif %}
+                <td class="irsrvd_cnt" style="text-align: center;">{{ p.Reserved_Inventory_Count }}</td>
+                <td class="ito_be_rcvd_cnt" style="text-align: center;">{{ p.To_Be_Received_Inventory_Count }}</td> 
+                <td> <span class="badge" style="display: inline-block;" data-color="{{ p.Category.Category_Hex_Color_ID }}" id="badge-tag">{{ p.Category }}</span> </td>
+                <!-- <td class="icategories" style="text-align: center;">{{ p.Category.Category_Hex_Color_ID }}</td>
+                <td class="icategories" style="text-align: center;">{{ p.Category }}</td> -->
+                <td class="iconsignee" style="text-align: center;">
+                    <div class="badge-container">
+                      {% for c in consignee_products %}
+                        {% if c.Product_ID.Product_ID == p.Product_ID %}
+                          <span class="badge" style="display: inline-block;" data-color="{{ c.Consignee_ID.Tag_Hex_Color_ID}}" id="badge-tag">{{ c.Consignee_ID.Consignee_Tag_ID }}</span> 
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  </td>  
+                <!-- Updated View button trigger -->
+                <td> 
+                  <button type="button" class="btn btn-primary btn-view" data-bs-toggle="modal" data-bs-target="#productModal" data-product-pk="{{ p.Product_ID }}">View</button>
+                </td>     
+              </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/2.0.0/js/dataTables.js"></script>
+  <script src="https://cdn.datatables.net/2.0.0/js/dataTables.bootstrap5.js"></script>
+  
+  <!-- DataTables Initialization -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+            // Get all badge elements for categories
+            var badges = document.querySelectorAll('.badge');
+            
+            // Loop through each badge element
+            badges.forEach(function(badge) {
+                // Get the corresponding hex color from data attribute
+                var hexColor = badge.getAttribute('data-color');
+
+                // Set the background color of the badge
+                badge.style.backgroundColor = hexColor;
+
+                badge.style.border = '1px solid #000000';
+
+                // Check if the background color is light or dark
+                if (isColorLight(hexColor)) {
+                    badge.style.color = '#000000'; // Set text color to black for light background
+                } else {
+                    badge.style.color = '#ffffff'; // Set text color to white for dark background
+                }
+            });
+
+            // Function to check if a color is light
+            function isColorLight(color) {
+                // Convert hex color to RGB
+                var r = parseInt(color.substr(1, 2), 16);
+                var g = parseInt(color.substr(3, 2), 16);
+                var b = parseInt(color.substr(5, 2), 16);
+                
+                // Calculate luminance
+                var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                
+                // Check if luminance is greater than 0.5 (light color)
+                return luminance > 0.5;
+            }
+            
+        });
+    $(document).ready(function() {
+        var table = $('#currentinventory').DataTable();
+
+        // Add event listener for category filter
+        $('#categoryFilter, #consigneeFilter').on('change', function() {
+          var category = $('#categoryFilter').val();
+          var consignee = $('#consigneeFilter').val();
+          var url = window.location.pathname; // Get the current URL
+          var params = new URLSearchParams(window.location.search); // Get the existing query parameters
+          params.set('category', category); // Set the 'category' parameter to the selected value
+          params.set('consignee', consignee); // Set the 'consignee' parameter to the selected value
+          window.location.href = url + '?' + params.toString(); // Update the URL with the new parameters
+        });
+
+        $('#resetFilters').on('click', function() {
+          var url = window.location.pathname; // Get the current URL
+          var params = new URLSearchParams(window.location.search); // Get the existing query parameters
+          params.set('category', ""); // Set the 'category' parameter to the selected value
+          params.set('consignee', ""); // Set the 'consignee' parameter to the selected value
+          params.set('stock_status', "") // Set the 'stock_status' parameter to the selected value
+          window.location.href = url + '?' + params.toString(); // Update the URL with the new parameters
+        });
+
+        $('#noStockFilters').on('click', function() {
+          var stock_status = $('#noStock_inp').val();
+          var url = window.location.pathname; // Get the current URL
+          var params = new URLSearchParams(window.location.search); // Get the existing query parameters
+          params.set('stock_status', stock_status); // Set the 'stock_status' parameter to the selected value
+          window.location.href = url + '?' + params.toString(); // Update the URL with the new parameters
+        });
+        
+        $('#lowStockFilters').on('click', function() {
+          var stock_status = $('#lowStock_inp').val();
+          var url = window.location.pathname; // Get the current URL
+          var params = new URLSearchParams(window.location.search); // Get the existing query parameters
+          params.set('stock_status', stock_status); // Set the 'stock_status' parameter to the selected value
+          window.location.href = url + '?' + params.toString(); // Update the URL with the new parameters
+        });
+        
+        $('#regStockFilters').on('click', function() {
+          var stock_status = $('#regStock_inp').val();
+          var url = window.location.pathname; // Get the current URL
+          var params = new URLSearchParams(window.location.search); // Get the existing query parameters
+          params.set('stock_status', stock_status); // Set the 'stock_status' parameter to the selected value
+          window.location.href = url + '?' + params.toString(); // Update the URL with the new parameters
+        });
+        
+        $('#showHidden').on('change', function() {
+          var showHidden = $(this).prop('checked');
+          var url = window.location.pathname; // Get the current URL
+          var params = new URLSearchParams(window.location.search); // Get the existing query parameters
+          if (showHidden) {
+              params.set('showHidden', showHidden); // Set the 'showHidden' parameter to the checkbox value
+          } else {
+              params.delete('showHidden'); // Remove the 'showHidden' parameter if the checkbox is unchecked
+          }
+          window.location.href = url + '?' + params.toString(); // Update the URL with the new parameters
+      });
+    });
+  </script>
+  <div class="col"></div>
+
+  <!-- Modal JavaScript -->
+  <script>
+    $('.btn-view').click(function() {
+      var productPk = $(this).data('product-pk');
+      console.log("Product PK:", productPk);
+      $.ajax({
+        url: '/view_product/' + productPk + '/',
+        method: 'GET',
+        success: function(response) {
+          $('#productModal').find('.modal-title').text('Product Information');
+          $('#productModal').find('.modal-body').html(`
+            <div class="row">
+
+              <!-- Image -->
+              <div class="col m-0">
+                ${response.picture ? `<div class="product-image" style="text-align: center;"><img src="${response.picture}" width="200"></div>` : ''}
+              </div>
+
+              <!-- 1st row -->
+              <div class="col mx-2">
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Product Name:</strong></h6>
+                      <p class="card-text">${response.name}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Product ID:</strong></h6>
+                      <p class="card-text">${response.id}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Reserved:</strong></h6>
+                      <p class="card-text">${response.reserved_count}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Actual Count:</strong></h6>
+                      <p class="card-text">${response.count}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Category:</strong></h6>
+                      <p class="card-text">${response.category}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2nd row -->
+              <div class="col mx-2">
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Price:</strong></h6>
+                      <p class="card-text">${response.price}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>SKU:</strong></h6>
+                      <p class="card-text">${response.sku}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>To Be Received:</strong></h6>
+                      <p class="card-text">${response.to_be_received_count}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Stock Level Threshold:</strong></h6>
+                      <p class="card-text">${response.threshold}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Tags:</strong></h6>                      
+                      ${response.tags ? `<p class="card-text">${response.tags.join(', ')}</p>` : ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `);
+          $('#productModal').find('.modal-footer').find('a.btn-primary').attr('href', '/update_product/' + response.product_id + '/');
+
+          $('#productModal').modal('show');
+        },
+        error: function(xhr, status, error) {
+          console.error(error);
+        }
+      });
+    });
+
+    $(document).ready(function() {
+    function updateCounts() {
+      var totalProductsCount = 0;
+      var noStockCount = 0;
+      var lowStockCount = 0;
+      var regularStockCount = 0;
+
+      {% for p in products %}
+        {% if p.Visibility or show_hidden == True %}
+          totalProductsCount++;
+          {% if p.Product_Stock_Status == 'Low Stock' %}
+            lowStockCount++;
+          {% elif p.Product_Stock_Status == 'No Stock' %}
+            noStockCount++;
+          {% elif p.Product_Stock_Status == 'Regular Stock' %}
+            regularStockCount++;
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+
+      $('#total_products_count').text(totalProductsCount);
+      $('#no_stock_count').text(noStockCount);
+      $('#low_stock_count').text(lowStockCount);
+      $('#regular_stock_count').text(regularStockCount);
+    }
+
+    updateCounts(); // Call the function when the page loads
+
+    $('#showHidden').on('change', function() {
+      updateCounts(); // Call the function when the show hidden checkbox changes
+    });
+  });
+  </script>
+{% endblock %}

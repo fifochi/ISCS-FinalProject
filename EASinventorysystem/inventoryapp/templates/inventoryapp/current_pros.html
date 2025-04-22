@@ -1,0 +1,224 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.0.0/css/dataTables.bootstrap5.css">
+{% extends 'inventoryapp/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<head>
+    <title>Current Product Requisition Orders</title>
+</head>
+
+<body class="bg-light">
+  <div class="container-fluid">
+
+    <div class="row p-1" style="background-color: #eee;">
+      <div class="col-md-auto d-flex align-items-center">
+        <h4 class="m-0 mr-3">Current Product Requisition Orders</h4>
+      </div>
+    </div>
+
+    <!-- Buttons row -->
+    <div class="row mt-3">
+      <!-- Buttons column -->
+      <div class="col-md-auto">
+        <a href="{% url 'add_pro' %}" class="btn btn-primary">Add Product Requisition Order</a>
+      </div>
+
+      <div class="col-md-auto">
+        <a href="{% url 'history_pro' %}" class="btn btn-primary">Product Requisition Order History</a>
+      </div>
+      <div class="col-md-auto">
+        <a href="{% url 'history_partially_fulfilled' %}" class="btn btn-primary">Partially Fulfilled History</a>
+      </div>
+    </div>
+    {% if messages %}
+      {% for message in messages %}
+          <div class="alert alert-success" role="alert">
+              {{ message }}
+          </div>
+      {% endfor %}
+    {% endif %}
+    {% if error_msg %}
+      <div class="alert alert-danger" role="alert">
+          {{ error_msg }}
+      </div>
+    {% endif %}
+    <div class="row mt-3">
+      <div class="col-md-auto">
+        <select id="customerFilter" class="form-select" aria-label="Filter by Progress">
+            <option value="">All Progress Types</option>
+            <option value="Pending" {% if request.GET.progress_type|stringformat:"s" == "Pending" %} selected {% endif %}>Pending</option>
+            <option value="To be Picked Up" {% if request.GET.progress_type|stringformat:"s" == "To be Picked Up" %} selected {% endif %}>To be Picked Up</option>
+        </select>
+      </div>
+    </div>
+    <!-- Table Inventory row -->
+    <div class="row mt-3">
+      <div class="table-responsive">
+        <table id="currentpro" class="table text-center">
+          <thead>
+            <tr>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Requisition Number</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Creation Date</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Estimated Receiving Date</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Manufacturer</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Progress</th>
+              <th scope="col" style="background-color: #C2C1C1;" data-orderable="false"> </th>
+              <th scope="col" style="background-color: #C2C1C1;" data-orderable="false"> </th>
+              <th scope="col" style="background-color: #C2C1C1;" data-orderable="false"> </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pro in requisition_orders %}
+              {% if pro.PRO_Status == "Ongoing" %}
+                <tr>  
+                    <td class = "iname" style="text-align: center;">{{pro.Product_Requisition_ID}}</td>
+                    <td class = "iid" style="text-align: center;">{{pro.Creation_Date}}</td>
+                    <td class = "iact_inv_cnt" style="text-align: center;">{{pro.Estimated_Receiving_Date}}</td>
+                    <td class = "iact_inv_cnt" style="text-align: center;">{{pro.PRO_Manufacturer}}</td>
+                    <td class="iact_inv_cnt" style="text-align: center;">
+                      <select class="PRO_progress_dropdown" name="PRO_progress_dropdown" data-PRO-pk="{{ pro.Product_Requisition_ID }}" onchange="updateProgress(this)">
+                        <option value="Pending" {% if pro.Progress == "Pending" %}selected{% endif %}>Pending</option>
+                        <option value="To be Picked Up" {% if pro.Progress == "To be Picked Up" %}selected{% endif %}>To be Picked Up</option>
+                      </select>
+                    </td>
+                    <td> 
+                      {% if not has_parfills %}
+                      <form id="cancelPRoForm{{ pro.Product_Requisition_ID }}" action="{% url 'cancel_pro' pk=pro.pk account_id=request.user.account.pk %}" method="post">
+                          {% csrf_token %}
+                          <button type="button" class="btn btn-danger openCancelModal" data-pro-pk="{{ pro.Product_Requisition_ID }}">Cancel</button>
+                      </form>
+                      <div class="modal fade" id="confirmCancelModal{{ pro.Product_Requisition_ID }}" tabindex="-1" aria-labelledby="confirmCancelModalLabel{{ pro.Product_Requisition_ID }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="confirmCancelModalLabel{{ pro.Product_Requisition_ID }}">Confirm Cancel</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Are you sure you want to cancel this product requisition?
+                                </div>
+                                <div class="modal-footer">
+                                    <div class="col-1"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button></div>
+                                    <div class="col text-end"><button type="submit" class="btn btn-success confirmCancel" data-pro-form="{{ pro.Product_Requisition_ID }}">Yes</button></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                      {% else %}
+                        <button type="button" class="btn btn-danger" disabled>Cancel</button>
+                      {% endif %}
+                    </td> 
+                    <td> 
+                      <form id="closePRoForm{{ pro.Product_Requisition_ID }}" action="{% url 'close_pro' pk=pro.pk account_id=request.user.account.pk %}" method="post">
+                        {% csrf_token %}
+                        <button type="button" class="btn btn-success openModal" data-pro-pk="{{ pro.Product_Requisition_ID }}">Close</button>
+                    </form>
+                    <div class="modal fade" id="confirmCloseModal{{ pro.Product_Requisition_ID }}" tabindex="-1" aria-labelledby="confirmCloseModalLabel{{ pro.Product_Requisition_ID }}" aria-hidden="true">
+                      <div class="modal-dialog">
+                          <div class="modal-content">
+                              <div class="modal-header">
+                                  <h5 class="modal-title" id="confirmCloseModalLabel{{ pro.Product_Requisition_ID }}">Confirm Close</h5>
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body">
+                                  Are you sure you want to close this product requisition?
+                              </div>
+                              <div class="modal-footer">
+                                  <div class="col-1"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button></div>
+                                  <div class="col text-end"><button type="submit" class="btn btn-success confirmClose" data-pro-form="{{ pro.Product_Requisition_ID }}">Yes</button></div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  
+                    </td> 
+                    <td> 
+                      <a href="{% url 'view_pro' pk=pro.pk %}" type="button" class="btn btn-primary">View</a>
+                    </td>             
+                </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/2.0.0/js/dataTables.js"></script>
+  <script src="https://cdn.datatables.net/2.0.0/js/dataTables.bootstrap5.js"></script>
+  
+  <script>
+    $(document).ready(function() {
+        $('#currentpro').DataTable();
+    });
+
+    function updateProgress(dropdown) {
+      const selectedValue = $(dropdown).val();
+      var PRO_pk = $(dropdown).data('pro-pk');
+      
+      let csrftoken = '{{ csrf_token }}'
+
+      $.ajax({
+        url: '/update_PRO_progress/' + PRO_pk +"/",
+        method: 'POST',
+        contentType: 'application/json',
+        headers:{'X-CSRFToken':csrftoken},
+        data: JSON.stringify({ progress: selectedValue }),
+        success: function(response) {
+          console.log('Progress updated successfully');
+        },
+        error: function(xhr, status, error) {
+          console.error(error);
+        }
+      });
+    }
+    var closeButtons = document.querySelectorAll('.openModal');
+    closeButtons.forEach(function(button) {
+        button.addEventListener('click', function () {
+            var proId = this.getAttribute('data-pro-pk');
+            $('#confirmCloseModal' + proId).modal('show');
+        });
+    });
+
+    var confirmCloseButtons = document.querySelectorAll('.confirmClose');
+    confirmCloseButtons.forEach(function(button) {
+        button.addEventListener('click', function () {
+            var proFormId = this.getAttribute('data-pro-form');
+            $('#closePRoForm' + proFormId).submit();
+        });
+    });
+    // Open modal when the "Cancel" button is clicked
+    var cancelButtons = document.querySelectorAll('.openCancelModal');
+    cancelButtons.forEach(function(button) {
+        button.addEventListener('click', function () {
+            var proId = this.getAttribute('data-pro-pk');
+            $('#confirmCancelModal' + proId).modal('show');
+        });
+    });
+
+    // Handle submission of the cancellation form when confirmed
+    var confirmCancelButtons = document.querySelectorAll('.confirmCancel');
+    confirmCancelButtons.forEach(function(button) {
+        button.addEventListener('click', function () {
+            var proFormId = this.getAttribute('data-pro-form');
+            $('#cancelPRoForm' + proFormId).submit();
+        });
+    });
+    $(document).ready(function() {
+          var table = $('#currentpro').DataTable();
+
+          // Add event listener for customer type filter
+          $('#customerFilter').on('change', function() {
+              var progress_type = $(this).val();
+              var url = window.location.pathname; // Get the current URL
+              var params = new URLSearchParams(window.location.search); // Get the existing query parameters
+              params.set('progress_type', progress_type); // Set the 'customer_type' parameter to the selected value
+              window.location.href = url + '?' + params.toString(); // Update the URL with the new parameters
+          });
+        });
+  </script>  
+</body>
+{% endblock %}

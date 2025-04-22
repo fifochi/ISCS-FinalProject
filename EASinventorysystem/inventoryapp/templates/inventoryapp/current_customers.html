@@ -1,0 +1,326 @@
+<link rel ="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+<link rel ="stylesheet" href="https://cdn.datatables.net/2.0.0/css/dataTables.bootstrap5.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.6/umd/popper.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+{% extends 'inventoryapp/base.html' %}
+{% load static %}
+
+{% block content %}
+<head>
+    <title>Customers</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.0/css/dataTables.bootstrap5.css">
+</head>
+
+<body class="customer-screen-bg">
+
+  <div class="modal fade" id="customerModal" tabindex="-1" role="dialog" aria-labelledby="customerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="customerModalLabel"></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="color: gray;"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="customerInfo">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <a class="btn btn-primary">Edit</a> 
+        </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+
+    <div class="row p-1" style="background-color: #eee;">
+      <div class="col-md-auto d-flex align-items-center">
+        <h4 class="m-0 mr-3">Customer</h4>
+      </div>
+    </div>
+
+    <!-- Buttons row -->
+    <div class="row mt-3">
+      <!-- Buttons column -->
+      <div class="col-md-auto">
+        <div class="dropdown">
+          <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+            Create New Customer
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            <!-- WHY AYAW GUMAWNA -->
+            <li><a href="{% url 'create_direct_customer' %}" class="dropdown-item">Direct Customer</a></li>
+            <li><a href="{% url 'create_consignee' %}" class="dropdown-item">Consignee</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% if messages %}
+      {% for message in messages %}
+          <div class="alert alert-success" role="alert">
+              {{ message }}
+          </div>
+      {% endfor %}
+  {% endif %}
+    <div class="row mt-3">
+      <div class="col-md-auto">
+        <select id="customerFilter" class="form-select" aria-label="Filter by Customer">
+            <option value="">All Customers Types</option>
+            <option value="Direct" {% if request.GET.customer_type|stringformat:"s" == "Direct" %} selected {% endif %}>Direct</option>
+            <option value="Consignee" {% if request.GET.customer_type|stringformat:"s" == "Consignee" %} selected {% endif %}>Consignee</option>
+        </select>
+      </div>
+    </div>
+    <!-- Table Inventory row -->
+    <div class="row mt-3">
+      <div class="table-responsive">
+        <table id="currentcustomer" class="table text-center">
+          <thead>
+            <tr>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Customer Name</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Customer Type</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Zip Code</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Contact Information</th>
+              <th scope="col" style="background-color: #C2C1C1;" data-orderable="false"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in customers %}
+              <tr>
+                {% if c.Customer_Name %}
+                <td class="iname" style="text-align: center;">{{ c.Customer_Name }}</td>
+                {% elif c.Consignee_Name %}
+                <td class="iname" style="text-align: center;">{{ c.Consignee_Name }}</td>
+                {% endif %}
+                <td class="iid" style="text-align: center;">{{ c.Customer_Type }}</td>
+                <td class="iact_inv_cnt" style="text-align: center;">{{ c.Zip_Code }}</td>
+                <td class="iact_inv_cnt" style="text-align: center;">{{ c.Primary_Contact_Number }}</td>
+                <td>
+                  {% if c.Customer_Name %}
+                    <button type="button" class="btn btn-primary btn-view" data-bs-toggle="modal" data-bs-target="#customerModal" data-customer-pk="{{ c.Customer_ID }}" data-direct-customer="true">View</button>
+                  {% elif c.Consignee_Name %}
+                    <button type="button" class="btn btn-primary btn-view" data-bs-toggle="modal" data-bs-target="#customerModal" data-customer-pk="{{ c.Consignee_ID }}" data-direct-customer="false">View</button>
+                  {% endif %}
+                </td>    
+              </tr>
+            {% endfor %}        
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.0/js/dataTables.js"></script>
+<script src="https://cdn.datatables.net/2.0.0/js/dataTables.bootstrap5.js"></script>
+</body> 
+
+<script>
+  $(document).ready(function() {
+    $('#currentcustomer').DataTable({
+      "order": [[0, "asc"]]
+    });
+  });
+  </script>
+<!-- <script>
+  $(document).ready(function() {
+    $('.btn-view').click(function() {
+      var customerId = $(this).data('customer-pk');
+      var isDirectCustomer = $(this).data('direct-customer');
+
+      // Determine the message based on customer type
+      var message = isDirectCustomer ? 'Hello Direct Customer' : 'Hello Consignee';
+
+      // Update modal content with the message
+      $('#customerModal').find('.modal-body').html('<p>' + message + '</p>');
+
+      // Show the modal
+      $('#customerModal').modal('show');
+    });
+  });
+</script> -->
+
+<script> //ayaw gumana doe
+  $('.btn-view').click(function() {
+      var customerId = $(this).data('customer-pk');
+      var isDirectCustomer = $(this).data('direct-customer');
+
+      var url = isDirectCustomer ? '/view_customer/direct/' : '/view_customer/consignee/';
+      console.log("Constructed URL:", url);
+      $.ajax({
+          url: url + customerId + '/',
+          method: 'GET',
+          success: function(response) {
+              $('#customerModal').find('.modal-title').text('Customer Information');
+              $('#customerModal').find('.modal-body').html(`
+              <div class="row mb-1">
+                <p><strong>Customer Type:</strong> <u>${response.customer_type}</u></p>
+              </div>
+
+              <div class="row">
+                <!-- 1st colum -->
+                <div class="col mx-2">
+                  <div class="row mb-2">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Customer Name:</strong></h6>
+                        <p class="card-text">${response.name}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Address:</strong></h6>
+                        <p class="card-text">${response.address}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col mx-1">
+                      <div class="row mb-2">
+                        <div class="card">
+                          <div class="card-body">
+                            <h6 class="card-title"><strong>Province:</strong></h6>
+                            <p class="card-text">${response.province}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="card">
+                          <div class="card-body">
+                            <h6 class="card-title"><strong>Barangay:</strong></h6>
+                            <p class="card-text">${response.barangay}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col mx-1">
+                      <div class="row mb-2">
+                        <div class="card">
+                          <div class="card-body">
+                            <h6 class="card-title"><strong>Municipality:</strong></h6>
+                            <p class="card-text">${response.municipality}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="card">
+                          <div class="card-body">
+                            <h6 class="card-title"><strong>Zip code:</strong></h6>
+                            <p class="card-text">${response.zip_code}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Contact Number:</strong></h6>
+                        <p class="card-text">${response.contact_number}</p>
+                      </div>
+                    </div>
+                  </div>
+        
+                  <div class="row mb-2">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Notes:</strong></h6>
+                        <p class="card-text">${response.notes}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+
+                ${isDirectCustomer ? '' : `
+                <!-- 2nd row -->
+                <div class="col mx-2">
+                  <div class="row mb-2">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Email Address:</strong></h6>
+                        <p class="card-text">${response.email_address}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-title"><strong>Consignment Period Start:</strong></h6>
+                          <p class="card-text">${response.consignment_period_start}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-title"><strong>Consignment Period End:</strong></h6>
+                          <p class="card-text">${response.consignment_period_end}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-title"><strong>Tag ID:</strong></h6>
+                          <p class="card-text">${response.tagID}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="card">
+                        <div class="card-body">
+                          <h6 class="card-title"><strong>Tag Hex Color ID:</strong></h6>
+                          <p class="card-text">${response.tag_hex_color_id}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                `}
+              `);
+              var url = isDirectCustomer ? '/update_direct_customer/' : '/update_consignee/';
+              $('#customerModal').find('.modal-footer').find('a.btn-primary').attr('href', url + response.customer_id + '/');
+              
+              $('#customerModal').modal('show');
+          },
+          error: function(xhr, status, error) {
+              console.error(error);
+          }
+      });
+  });
+</script>
+
+<script>
+  $(document).ready(function() {
+    var table = $('#currentcustomer').DataTable();
+
+    // Add event listener for customer type filter
+    $('#customerFilter').on('change', function() {
+        var customer_type = $(this).val();
+        var url = window.location.pathname; // Get the current URL
+        var params = new URLSearchParams(window.location.search); // Get the existing query parameters
+        params.set('customer_type', customer_type); // Set the 'customer_type' parameter to the selected value
+        window.location.href = url + '?' + params.toString(); // Update the URL with the new parameters
+    });
+  });
+
+</script>
+
+  
+{% endblock %}
+

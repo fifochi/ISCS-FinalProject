@@ -1,0 +1,200 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"
+    integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
+
+{% extends 'inventoryapp/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<body>
+    <style>
+        .required:after {
+          content:" *";
+          color: red;
+        }
+    </style>
+    <div class="container-fluid">
+        <div class="row p-1" style="background-color: #eee;">
+            <div class="col-md-auto d-flex align-items-center">
+                <h4 class="m-0 mr-3">Create Direct Customer</h4>
+            </div>
+        </div>
+        
+        {% if error_msg %}
+            <div class="alert alert-danger">{{ error_msg }}</div>
+        {% endif %}
+        
+        <form method="POST" id="createCustomerForm">
+            {% csrf_token %}
+            <legend>Direct Customer Information</legend>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="required" for="id_customer_name">Customer Name:</label>
+                        <input type="text" id="id_customer_name" name="customer_name" class="form-control" maxlength="32" placeholder="Customer Name" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="required" for="id_primary_contact_number" class="form-label custom-text">Primary Contact Number:</label>
+                        <input type="text" name="primary_contact_number" class="form-control" id="id_primary_contact_number" placeholder="Primary Contact Number: 09xxxxxxxxx" pattern="09[0-9]{9}" oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);" maxlength="11" onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode == 8 || event.charCode == 0;" required>
+                    </div>                    
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="required" for="address_line1" class="form-label">Address Line 1:</label>
+                <input type="text" class="form-control" id="address_line1" name="address_line1" maxlength="128" placeholder="Address Line 1" required>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="required" for="province" class="form-label">Province:</label>
+                        <input type="text" class="form-control" id="province" name="province" maxlength="64" placeholder="Province" required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="required" for="municipality" class="form-label">Municipality:</label>
+                        <input type="text" class="form-control" id="municipality" name="municipality" maxlength="64" placeholder="Municipality" required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="required" for="barangay" class="form-label">Barangay:</label>
+                        <input type="text" class="form-control" id="barangay" name="barangay" maxlength="64" placeholder="Barangay" required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="required" for="zip_code" class="form-label">Zip Code:</label> 
+                        <input type="text" name="zip_code" class="form-control" required id="zip_code" placeholder="Zip Code" onkeypress="return (event.charCode >= 48 && event.charCode <= 57)" maxlength="4">
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes:</label>
+                <textarea class="form-control" id="notes" name="notes" maxlength="1024" placeholder="Notes"></textarea>
+            </div>
+            
+            <div class="d-flex justify-content-between w-100">
+                <button type="button" class="btn btn-danger" id="cancelButton">Cancel</button>
+                <button type="button" class="btn btn-success" id="createBtn" onclick="handleSubmit()">Create</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">Confirmation</h5>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to create this new Consignee?
+                </div>
+                <div class="modal-footer">
+                    <div class="col">
+                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
+                    </div>
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="document.getElementById('createCustomerForm').submit()">Yes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Modal -->
+    <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cancelModalLabel">Warning</h5>
+                </div>
+                <div class="modal-body">
+                    Exit form? Any changes you have made may not be saved.
+                </div>
+                <div class="modal-footer">
+                    <div class="col">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
+                    </div>
+                    <a href="{% url 'current_customers' %}" class="btn btn-danger">Exit Anyways</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        document.getElementById("cancelButton").addEventListener("click", function() {
+                var myModal = new bootstrap.Modal(document.getElementById('cancelModal'));
+                myModal.show();
+        });
+
+
+        // Function to handle form submission
+        function handleSubmit(event) {
+            if (checkRequiredFields() && checkPrimaryContactNumber()) {
+                showConfirmationModal();
+            }
+        }
+
+        // Function to show the confirmation modal
+        function showConfirmationModal() {
+            var myModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+            myModal.show();
+        }
+
+       // Function to check if all required fields are filled
+        function checkRequiredFields() {
+            let inputs = document.querySelectorAll('input[required]');
+            let isValid = true;
+
+            inputs.forEach(function(input) {
+                if (!input.value.trim()) {
+                    isValid = false;
+                    input.classList.add('is-invalid'); // Add red border
+                } else {
+                    input.classList.remove('is-invalid'); // Remove red border
+                }
+            });
+
+            if (!isValid) {
+                alert('Please fill out all required fields and satisfy the required input.');
+            }
+
+            return isValid;
+        }
+
+
+        // Function to check if the primary contact number starts with 09
+        function checkPrimaryContactNumber() {
+            let primaryContactInput = document.getElementById('id_primary_contact_number');
+            let inputValue = primaryContactInput.value.trim();
+            let isValid = true; // Define isValid variable here
+
+            var contactNumberPattern = /^09\d{9}$/; // Regex pattern to match "09" followed by 9 digits
+
+            if (inputValue.length !== 11 || !contactNumberPattern.test(inputValue)) {
+                isValid = false;
+                primaryContactInput.classList.add('is-invalid');
+                alert('Please input a valid number starting with 09 and exactly 11 digits.'); // Notify the user
+            } else {
+                primaryContactInput.classList.remove('is-invalid');
+            }
+
+            // Validate minimum length for zip code
+            var zipCodeInput = document.getElementById('zip_code');
+            if (zipCodeInput.value.trim().length !== 4) {
+                isValid = false;
+                zipCodeInput.classList.add('is-invalid');
+                alert('Please input a valid 4-digit zip code.'); // Notify the user
+            } else {
+                zipCodeInput.classList.remove('is-invalid');
+            }
+
+            return isValid;
+        }
+    </script>
+</body>
+{% endblock %}

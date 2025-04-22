@@ -1,0 +1,778 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
+
+{% extends 'inventoryapp/base.html' %}
+{% load static %}
+
+{% block content %}
+<body>
+    <style>
+        .required:after {
+          content:" *";
+          color: red;
+        }
+
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+    <div class="container-fluid">
+        <div class="row p-1" style="background-color: #eee;">
+            <div class="col-md-auto d-flex align-items-center">
+                <h4 class="m-0 mr-3">Add Purchase Order: Direct Customer</h4>
+            </div>
+        </div>
+
+        
+        <form id="addPO" method="POST" action="{% url 'add_po_direct_customer' %}">
+            <!-- First Tab: Customer Information -->
+            <div id="step1">
+            
+                {% csrf_token %}
+                <fieldset>
+                    <legend>Direct Customer Information</legend>
+
+                    <!-- Rows for Customer Information -->
+                    <!-- Row 1: Requested Date -->
+                    <div class="row">
+                        <div class="col">
+                            <label class="required" for="requested_date">Requested Date:</label><br>
+                            <input type="date" id="requested_date" name="requested_date" class="form-control" onkeydown="return false" required ><br><br>
+                        </div>
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                var today = new Date();
+                                var dd = String(today.getDate()).padStart(2, '0');
+                                var mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
+                                var yyyy = today.getFullYear();
+                        
+                                today = yyyy + '-' + mm + '-' + dd;
+                        
+                                var estimatedReceivingDateInput = document.getElementById('requested_date');
+                                estimatedReceivingDateInput.setAttribute('min', today);
+                            });
+                        </script>
+                        
+                        <div class="col">
+                        </div>
+                        <div class="col">
+                        </div>
+                    </div>
+                    
+                    <!-- Row 2: Customer Name & Contact Info  -->
+                    <div class="row">
+                        <div class="col">
+                            <label class="required" for="customer_name">Customer Name:</label><br>
+                            <input type="text" id="customer_name" name="customer_name" class="form-control" required maxlength="32"><br><br>
+                        </div>
+                        <div class="col">
+                            <label class="required" for="contact_info">Primary Contact Number:</label><br>
+                            <input type="text" name="contact_info" class="form-control" required id="contact_info" placeholder="Primary Contact Number: 09xxxxxxxxx" pattern="09[0-9]{9}" oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);" maxlength="11" onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode == 8 || event.charCode == 0;"><br>
+
+                            <!-- <input type="number" id="contact_info" name="contact_info" class="form-control" maxlength="11" required minlength="11" placeholder="09123456789"><br><br> -->
+                        </div>
+                        
+                        <div class="col">
+                        </div>
+                    </div>
+                    
+                    <!-- Row 3: Shipping Method & Order Method-->
+                    <div class="row">
+                        <div class="col">
+                            <label class="required" for="shipping_method">Shipping Method:</label><br>
+                            <select id="shipping_method" name="shipping_method" class="form-select" required>
+                                <option value="No selected shipping method" selected disabled>Select Shipping Method</option>
+                                <option value="Grab">Grab</option>
+                                <option value="Lalamove">Lalamove</option>
+                                <!-- NOTE: value has no "_" for display purposes on third step -->
+                                <option value="Direct Delivery">Direct Delivery</option> 
+                                <option value="Lazada">Lazada</option>
+                                <option value="Shopee">Shopee</option>
+                            </select><br><br>
+                        </div>
+                        <div class="col">
+                            <label class="required" for="order_method">Order Method:</label><br>
+                            <select id="order_method" name="order_method" class="form-select">
+                                <option value="No selected order method" selected disabled>Select Order Method</option>
+                                <option value="Walk-in">Walk-in</option>
+                                <option value="Lazada">Lazada</option>
+                                <option value="Shopee">Shopee</option>
+                            </select><br><br>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 4: Address Line 1, Province, Municipality, Barangay, & Zip Code -->
+                    <div class="row">
+                        <div class="col">
+                            <label class="required" for="address_line1">Address Line 1:</label><br>
+                            <input type="text" id="address_line1" name="address_line1" class="form-control" required maxlength="128"><br><br>
+                        </div>
+                        <div class="col">
+                            <label class="required" for="province">Province:</label><br>
+                            <input type="text" id="province" name="province" class="form-control " required maxlength="64"><br><br>
+                        </div>
+                        <div class="col">
+                            <label class="required" for="municipality">Municipality:</label><br>
+                            <input type="text" id="municipality" name="municipality" class="form-control" required maxlength="64"><br><br>
+                        </div>
+                        <div class="col">
+                            <label class="required" for="barangay">Barangay:</label><br>
+                            <input type="text" id="barangay" name="barangay" class="form-control" required maxlength="64"><br><br>
+                        </div>
+                        <div class="col">
+                            <label class="required" for="zip_code">Zip Code: (4 digits)</label><br>
+                            <input type="text" name="zip_code" class="form-control" required id="zip_code" placeholder="Zip Code" onkeypress="return (event.charCode >= 48 && event.charCode <= 57)" maxlength="4"><br><br> 
+                            <!-- <input type="text" name="zip_code" class="form-control" required id="id_zip_code" placeholder="Zip Code" oninput="javascript: if (this.value.length > 4) this.value = this.value.slice(0, 4);" pattern="[0-9]{4}" > -->
+                            <!-- <input type="number" id="zip_code" name="zip_code" class="form-control" required minlength="4" placeholder="1234"><br><br> -->
+                        </div>
+                    </div>
+                    
+                    <!-- Row 5: Notes -->
+                    <div class="row">
+                        <div class="col">
+                            <label for="order_notes">Customer Notes:</label><br>
+                            <textarea id="customer_notes" name="customer_notes" rows="4" cols="50" class="form-control" maxlength="1024"></textarea><br><br>
+                        </div>
+                        <div class="col">
+                            <label for="customer_notes">Order Notes:</label><br>
+                            <textarea id="order_notes" name="order_notes" rows="4" cols="50" class="form-control" maxlength="1024"></textarea><br><br>
+                        </div>
+                    </div>
+
+                    <!-- Buttons for navigation -->
+                    <div class="row mb-3">
+                        <div class="col">
+                            <a href="#" class="btn btn-danger" onclick="showCancelWarningModal()">Cancel</a>
+                        </div>
+                        <div class="col text-end">
+                            <button type="button" class="btn btn-success" onclick="nextStep()">Next</button>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+
+            <!-- Second Tab: Product Selection -->
+            <div id="step2" style="display: none;">
+                <div class="container-fluid">
+                    <legend>Products Selection</legend>
+
+                    <div class="row mt-4">
+                        <div class="d-flex justify-content-center">
+                            <!-- Left column for Products Ordered -->
+                            <div class="col-md-6" style="padding-right: 2%; overflow-y: auto; height: 630px;">
+                                <h5>Products Ordered:</h5>
+                                <div class="container mt-2">
+                                    <div class="table-responsive">
+                                        <table class="table table-borderless text-center" id="PO_products">
+                                            <thead class="border-bottom border-dark">
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>ID</th>
+                                                    <th>Price</th>
+                                                    <th>Quantity</th>
+                                                    <th>Stock</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="product-list">
+                                                <!-- Products will be appended here as rows -->
+                                            </tbody>
+                                        </table>
+                                        <input type="hidden" name="all_products" id="all_products" value="">  
+                                        <input type="hidden" name="total_price" id="total_price" value="">  
+                                        <input type="hidden" name="account" id="account" value="{{ request.user.account.pk }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right column for Product List -->
+                            <div class="col-md-6" style="border-left: 2px solid gray; padding-left: 2%;">
+                                <div class="row mb-3">
+                                    <h5>List of Products:</h5>
+                                    <div class="input-group mb-4 mr-3">
+                                        <input type="text" class="form-control" id="search-input" placeholder="Search products..." aria-label="Search products" aria-describedby="search-button">
+                                    </div>
+                                </div>
+                                <div class="row mx-4" id="product-list" style="overflow-y: auto; height: 520px;">
+                                    {% for p in products %}
+                                    {% if p.Visibility %}
+                                        <div class="row mb-5 product-item" data-id="{{ p.EAS_Product_ID }}"> 
+                                            <!-- Product information -->
+                                            <div class="col">
+                                                {% if p.Picture %}
+                                                    <!-- Image -->
+                                                    <img src="{{ p.Picture.url }}" width="120" class="mr-3">
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="col">
+                                                <!-- Product details -->
+                                                <h5>{{ p.Name }}</h5>
+                                                <p>ID: {{ p.EAS_Product_ID }}</p>
+                                                <p class="product-price">Php {{ p.Price }}</p>
+                                                <p><strong>Stock: </strong><span class="product_count">{{ p.Actual_Inventory_Count }}</span></p>
+                                                <input type="hidden" class="product_pk" value="{{ p.Product_ID }}">
+                                            </div>
+
+                                            <div class="col">
+                                                <!-- Add to Cart button -->
+                                                <button type="button" class="btn btn-primary add-to-cart" data-name="{{ p.Name }}">Add to Cart</button>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Buttons: back and cancel -->
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <a href="#" class="btn btn-primary" onclick="prevStep()">Back</a>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button type="button" class="btn btn-success" onclick="validateQuantityAndNext()">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Third View: Summary -->
+            <div id="step3" style="display: none;">
+                <div class="container-fluid">
+                    <legend>Summary</legend>
+                    
+                    <!-- Customer Information -->
+                    <h5>Customer Information:</h5>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <p><strong>Customer Name:</strong> <span id="direct_customer_name"></span></p>
+                            <p><strong>Contact Info:</strong> <span id="direct_customer_contact_info"></span></p>
+                            <p><strong>Selected Shipping Method:</strong> <span id="selected_shipping_method"></span></p>
+                            <p><strong>Selected Order Method:</strong> <span id="selected_order_method"></span></p>
+
+                        </div>
+                        <div class="col">
+                            <p><strong>Address:</strong><br>
+                                <span id="direct_customer_address_line1"></span><br>
+                                <span id="direct_customer_barangay_municipality_province"></span><br>
+                                <span id="direct_customer_zip_code"></span></p>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <div class="col">
+                            <h5>Customer Notes:</h5>
+                            <p id="customer_notes_summary"></p>
+                        </div>
+                        <div class="col">
+                            <h5>Order Notes:</h5>
+                            <p id="order_notes_summary"></p>
+                        </div>
+                    </div>
+
+                    <!-- Products Table -->
+                    <h5>Products Selected:</h5>
+                    <p><strong>Total Price:</strong> <span id="total_price_summary"></span></p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>ID</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="selected-products-table">
+                                <!-- Selected products will be dynamically filled here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Buttons: back and submit -->
+                    <div class="row my-3">
+                        <div class="col-md-6">
+                            <a href="#" class="btn btn-primary" onclick="prevStep()">Back</a>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <!-- <button type="submit" class="btn btn-success" id="submit_po">Submit</button> -->
+                            <button type="submit" class="btn btn-success" id="submit_po" onclick="showConfirmationModal()">Submit</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Add to Cart"
+        var addToCartButtons = document.querySelectorAll('.add-to-cart');
+        addToCartButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                var productName = button.getAttribute('data-name');
+                var productId = button.parentNode.parentNode.dataset.id;
+                var productPK = button.closest('.product-item').querySelector('.product_pk').value;
+                var productCount = button.closest('.product-item').querySelector('.product_count').textContent.trim(); 
+                var productPrice = button.closest('.product-item').querySelector('.product-price').textContent.trim();
+                addToCart(productName, productId, productPK, productCount, productPrice);
+                renderTotalPrice();
+            });
+        });
+        
+        // add a product to the cart
+        function addToCart(productName, productId, productPK, productCount, productPrice) {
+            // get the table body where products will be appended
+            var productList = document.getElementById("product-list");
+            
+            // create a new row for the product
+            var newRow = document.createElement("tr");
+            
+            // populate the row with product information
+            newRow.innerHTML = `
+                <td>${productName}</td>
+                <td>${productId}</td>
+                <td>${productPrice}</td>
+                <td>
+                    <input type="number" 
+                            oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);"
+                            maxlength="5"
+                            min='1'
+                            id="quantityInput" 
+                            class="form-control text-center quantity-input" 
+                            style="width: 100px;" 
+                            value=1
+                            oninput="validateQuantityInput(event)"
+                            onkeydown="return restrictNonNumericals(event)">
+                </td>    
+                <td>${productCount}</td>
+                <input type="hidden" class="product_pk" value=${productPK}>
+                <td><button type="button" class="btn btn-danger" onclick="removeFromCart(this)">Remove</button></td>
+            `;
+            
+            // append the new row to the table body
+            productList.appendChild(newRow);
+            
+            // hide the product in the right column list
+            hideProduct(productId);
+        }
+    
+        // remove a product from the cart
+        function removeFromCart(row) {
+
+            // Get the price and quantity of the product being removed
+            var price = parseFloat(row.parentNode.parentNode.cells[2].textContent.replace('Php ', '').replace(',', ''));
+            var quantity = parseInt(row.parentNode.parentNode.cells[3].querySelector('.quantity-input').value);
+
+            // Remove the product from the DOM
+            row.parentNode.parentNode.remove();
+
+            // Update the total price by subtracting the price of the removed product
+            var totalPriceSummary = document.getElementById("total_price_summary");
+            var currentTotalPrice = parseFloat(totalPriceSummary.textContent.replace('Php ', '').replace(',', ''));
+            var newTotalPrice = currentTotalPrice - (price * quantity);
+
+            // Set the new total price in the summary
+            totalPriceSummary.textContent = "Php " + newTotalPrice.toFixed(2);
+
+            // Get the product ID of the removed product
+            var productId = row.parentNode.parentNode.cells[1].textContent.trim();
+
+            // Unhide the product in the right column list
+            unhideProduct(productId);
+        }
+    
+        // hide a product in the right column list
+        function hideProduct(productId) {
+            var productItem = document.querySelector(`.product-item[data-id="${productId}"]`);
+            if (productItem) {
+                productItem.style.display = 'none';
+            }
+        }
+    
+        // unhide a product in the right column list
+        function unhideProduct(productId) {
+            var productItem = document.querySelector(`.product-item[data-id="${productId}"]`);
+            if (productItem) {
+                productItem.style.display = '';
+            }
+        }
+    
+        var currentStep = 1;
+    
+        function nextStep() {
+            if (currentStep === 1) {
+                // Validate form inputs before proceeding
+                if (validateFormInputs()) {
+                    document.getElementById('step1').style.display = 'none';
+                    document.getElementById('step2').style.display = '';
+                    currentStep = 2;
+                } else {
+                    // Show error message or handle invalid form
+                    alert('Please fill out all required fields and satisfy the required input.');
+                }
+            } else if (currentStep === 2) {
+                document.getElementById('step2').style.display = 'none';
+                document.getElementById('step3').style.display = '';
+                currentStep = 3;
+                
+                // Collect consignee information
+                document.getElementById('direct_customer_name').textContent = document.getElementById('customer_name').value;
+                document.getElementById('direct_customer_contact_info').textContent = document.getElementById('contact_info').value;
+                document.getElementById('selected_shipping_method').textContent = document.getElementById('shipping_method').value;
+                document.getElementById('selected_order_method').textContent = document.getElementById('order_method').value;
+                document.getElementById('direct_customer_address_line1').textContent = document.getElementById('address_line1').value;
+                document.getElementById('direct_customer_barangay_municipality_province').textContent = document.getElementById('barangay').value + ", " + document.getElementById('municipality').value + ", " + document.getElementById('province').value;
+                document.getElementById('direct_customer_zip_code').textContent = document.getElementById('zip_code').value;
+                document.getElementById('customer_notes_summary').textContent = orderNotes = document.getElementById('order_notes').value;
+                document.getElementById('order_notes_summary').textContent = orderNotes = document.getElementById('customer_notes').value;
+
+
+                // Collect selected products
+                var selectedProducts = [];
+                var productRows = document.querySelectorAll("#product-list tr");
+                productRows.forEach(function(row) {
+                    var name = row.cells[0].textContent;
+                    var id = row.cells[1].textContent;
+                    var price = row.cells[2].textContent;
+                    var quantity = row.cells[3].querySelector('input').value;
+                    selectedProducts.push({ name: name, id: id, price: price, quantity: quantity });
+                });
+
+                // Render consignee information and selected products
+                renderSummary(selectedProducts);
+            }
+        }
+
+        // Function to validate form inputs before proceeding to the next step
+        function validateFormInputs() {
+            var inputs = document.querySelectorAll('#step1 input[required], #step1 select[required]');
+            var isValid = true;
+
+            inputs.forEach(function(input) {
+                if (!input.value.trim()) {
+                    isValid = false;
+                    input.classList.add('is-invalid');
+                } else {
+                    input.classList.remove('is-invalid');
+                }
+            });
+
+            // Validate order method
+            var orderMethodSelect = document.getElementById('order_method');
+            if (orderMethodSelect.value === 'No selected order method') {
+                isValid = false;
+                orderMethodSelect.classList.add('is-invalid');
+            } else {
+                orderMethodSelect.classList.remove('is-invalid');
+            }
+
+            // Validate shipping method
+            var shippingMethodSelect = document.getElementById('shipping_method');
+            if (shippingMethodSelect.value === 'No selected shipping method') {
+                isValid = false;
+                shippingMethodSelect.classList.add('is-invalid');
+            } else {
+                shippingMethodSelect.classList.remove('is-invalid');
+            }
+
+            // Validate minimum length for zip code
+            var zipCodeInput = document.getElementById('zip_code');
+            if (zipCodeInput.value.trim().length !== 4) {
+                isValid = false;
+                zipCodeInput.classList.add('is-invalid');
+            } else {
+                zipCodeInput.classList.remove('is-invalid');
+            }
+
+            // Validate minimum length and pattern for contact number
+            var contactNumberInput = document.getElementById('contact_info');
+            var contactNumberValue = contactNumberInput.value.trim();
+            var contactNumberPattern = /^09\d{9}$/; // Regex pattern to match "09" followed by 9 digits
+
+            if (contactNumberValue.length !== 11 || !contactNumberPattern.test(contactNumberValue)) {
+                isValid = false;
+                contactNumberInput.classList.add('is-invalid');
+            } else {
+                contactNumberInput.classList.remove('is-invalid');
+            }
+            // Validate minimum length for contact number
+            // var contactNumberInput = document.getElementById('contact_info');
+            // if (contactNumberInput.value.trim().length !== 11) {
+            //     isValid = false;
+            //     contactNumberInput.classList.add('is-invalid');
+            // } else {
+            //     contactNumberInput.classList.remove('is-invalid');
+            // }
+
+            return isValid;
+        }
+
+        // Render consignee information and selected products
+        function renderSummary(selectedProducts) {
+            var selectedProductsTable = document.getElementById("selected-products-table");
+            selectedProductsTable.innerHTML = "";
+            selectedProducts.forEach(function(product) {
+                var row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.id}</td>
+                    <td>${product.price}</td>
+                    <td>${product.quantity}</td>
+                `;
+                selectedProductsTable.appendChild(row);
+            });
+        }
+
+        // Function to display the cancel warning modal
+        function showCancelWarningModal() {
+            var myModal = new bootstrap.Modal(document.getElementById('cancelWarningModal'));
+            myModal.show();
+        }
+
+        // Function to handle cancellation of form submission
+        function cancelForm() {
+            // Redirect to the desired URL when Cancel is confirmed
+            window.location.href = "{% url 'current_pos' %}";
+        }
+
+        // Function to go back to the previous step
+        function prevStep() {
+            if (currentStep === 3) {
+                document.getElementById('step3').style.display = 'none';
+                document.getElementById('step2').style.display = '';
+                currentStep = 2;
+            } else if (currentStep === 2) {
+                document.getElementById('step2').style.display = 'none';
+                document.getElementById('step1').style.display = '';
+                currentStep = 1;
+            }
+        }
+
+        
+        $(document).ready(function () {
+            var totalPrice = 0;
+
+            $('#confirmSubmit').click(function () { // Changed the event listener to the "Yes" button in the modal
+                $('#PO_products tbody tr').each(function (i) {
+                    var productId = $(this).find('.product_pk').val();
+                    var productPriceText = $(this).find("td:eq(2)").text().trim();
+                    var productPriceNumeric = parseFloat(productPriceText.replace('Php ', '').replace(',', ''));
+
+                    var productQuantity = $(this).find(".quantity-input").val();
+
+                    var subtotal = productPriceNumeric * productQuantity; // Calculate subtotal for the row
+                    totalPrice += subtotal;
+
+                    var comb = productId + ':' + productQuantity;
+                    $('#all_products').val($('#all_products').val() + comb + '-');
+                });
+
+                $('#total_price').val(totalPrice.toFixed(2)); // Set total price with 2 decimal places
+
+                // Now submit the form
+                document.getElementById('addPO').submit();
+            });
+        });
+
+
+
+        // Function to filter products as user types in the search bar
+        document.getElementById("search-input").addEventListener("input", function() {
+            var searchValue = this.value.trim().toLowerCase();
+            var productItems = document.querySelectorAll(".product-item");
+            var addedProductIds = getAddedProductIds(); // Get product IDs already added to the left column
+            productItems.forEach(function(item) {
+                var productId = item.dataset.id; // Get the product ID from dataset
+                var productName = item.querySelector("h5").textContent.trim().toLowerCase();
+                if (!addedProductIds.includes(productId) && productName.includes(searchValue)) {
+                    item.style.display = ""; // Show the product item if not already added and matches search
+                } else {
+                    item.style.display = "none"; // Hide the product item otherwise
+                }
+            });
+        });
+
+        // Function to retrieve product IDs already added to the left column
+        function getAddedProductIds() {
+            var addedProductIds = [];
+            var productListRows = document.querySelectorAll("#PO_products tbody tr");
+            productListRows.forEach(function(row) {
+                var productId = row.cells[1].textContent.trim(); // Get product ID from the table cell
+                addedProductIds.push(productId);
+            });
+            return addedProductIds;
+        }
+
+        function validateQuantityAndNext() {
+            var quantityInputs = document.querySelectorAll('.quantity-input');
+            var isValid = true;
+
+            // Check if there's at least one product in the left column
+            var productListRows = document.querySelectorAll("#PO_products tbody tr");
+            if (productListRows.length === 0) {
+                isValid = false;
+                // Display alert message
+                alert("There should be at least 1 product in the products ordered.");
+            }
+
+            // Check if all quantities are valid
+            quantityInputs.forEach(function(input) {
+                const quantity = parseInt(input.value);
+                console.log(quantity);
+                if (isNaN(quantity) || quantity < 1) {
+                    isValid = false;
+                    // Show error message or handle invalid input as desired
+                    alert("Quantity must be a number greater than or equal to 1.");
+                }
+            });
+
+            if (isValid) {
+                nextStep(); // Proceed to the next step if all quantities are valid and at least one product is selected
+            }
+        }
+
+
+
+
+
+        // Total price
+
+        // Function to calculate total price
+        function calculateTotalPrice() {
+            var total = 0;
+            var selectedProducts = document.querySelectorAll("#PO_products tbody tr");
+
+            selectedProducts.forEach(function (product) {
+                var price = parseFloat(product.cells[2].textContent.replace('Php ', '').replace(',', ''));
+                var quantity = parseInt(product.cells[3].querySelector('.quantity-input').value); // Convert to integer
+                total += price * quantity;
+            });
+
+            return total.toFixed(2);
+        }
+
+        // Function to render total price on summary page
+        function renderTotalPrice() {
+            var totalPriceSummary = document.getElementById("total_price_summary");
+            var totalPrice = calculateTotalPrice();
+            totalPriceSummary.textContent = "Php " + totalPrice;
+        }
+
+        // Call renderTotalPrice() when the page loads and when a product is added or removed
+        document.addEventListener("DOMContentLoaded", function () {
+            renderTotalPrice();
+        });
+
+        // Function to update total price whenever there's a change in product quantity
+        document.addEventListener("input", function (event) {
+            var target = event.target;
+            if (target && target.classList.contains("quantity-input")) {
+                renderTotalPrice();
+            }
+        });
+
+        $(document).ready(function() {
+            $(window).keydown(function(event){
+                if(event.keyCode == 13) {
+                    event.preventDefault();
+                    return false;
+                }
+            });
+        });
+
+
+        // Function to show the confirmation modal
+        function showConfirmationModal() {
+            $('#confirmationModal').modal('show');
+        }
+
+        // Event listener for the submit button
+        document.getElementById('submit_po').addEventListener('click', function(event) {
+            // Prevent the default form submission
+            event.preventDefault();
+            // Show the confirmation modal
+            showConfirmationModal();
+        });
+
+        // Event listener for DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Event listener for the confirm button in the modal
+            document.getElementById('confirmSubmit').addEventListener('click', function() {
+                // Submit the form
+                document.getElementById('addPO').submit();
+            });
+        });
+        
+        function restrictNonNumericals(event) {
+            // Allow: backspace, delete, tab, escape, enter, and .
+            if (event.key === 'Backspace' || event.key === 'Delete' || event.key === 'Tab' || event.key === 'Escape' || event.key === 'Enter') {
+                return;
+            }
+            // Allow: Ctrl+A, Command+A
+            if ((event.ctrlKey === true || event.metaKey === true) && (event.key === 'a' || event.key === 'A')) {
+                return;
+            }
+            // Allow: home, end, left, right, down, up
+            if (event.key === 'Home' || event.key === 'End' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                return;
+            }
+            // Ensure that it is a number and stop the keypress
+            if (event.shiftKey || (event.key < '0' || event.key > '9')) {
+                event.preventDefault();
+            }
+        }
+        function validateQuantityInput(event) {
+            var inputElement = event.target; // Get the input element that triggered the event
+            var inputValue = inputElement.value; // Get the current value of the input
+
+            // Remove any non-numeric characters
+            inputElement.value = inputValue.replace(/\D/g, '');
+
+            // Example validation: Ensure that the input value is not negative
+            if (parseInt(inputValue) < 1) {
+                alert("Quantity cannot be negative!");
+                inputElement.value = 1; // Reset the value to 0
+            }
+        }
+    </script>
+</body>
+
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmationModalLabel">Confirmation </h5>
+        </div>
+        <div class="modal-body">
+            Are you sure you want to add this purchase order in the system?
+        </div>
+        <div class="modal-footer">
+            <div class="col">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
+            </div>
+            <button type="submit" class="btn btn-success" id="confirmSubmit">Yes</button>
+        </div>
+      </div>
+    </div>
+</div>
+
+<div class="modal fade" id="cancelWarningModal" tabindex="-1" aria-labelledby="cancelWarningModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelWarningModalLabel">Warning</h5>
+            </div>
+            <div class="modal-body">
+                Exit form? Any changes you have made may not be saved.
+            </div>
+            <div class="modal-footer">
+                <div class="col">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Close">Back</button>
+                </div>
+                <button type="button" class="btn btn-danger" onclick="cancelForm()">Exit Anyways</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,405 @@
+{% extends 'inventoryapp/base.html' %}
+{% load static %}
+
+{% block title %}
+    <title>Categories and Tags</title>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <div class="row p-1" style="background-color: #eee;">
+    <div class="col-md-auto d-flex align-items-center">
+      <h4 class="m-0 mr-3">Categories and Tags</h4>
+    </div>
+  </div>
+
+  <!-- Buttons row -->
+  <div class="row mt-3">
+    <!-- Buttons column -->
+    <div class="col-md-auto">
+      <a href="{% url 'add_category' %}" class="btn btn-primary">Create New Category</a>
+    </div>
+    <div class="col-md-auto">
+      <!-- Create New Tag Button -->
+      <a href="{% url 'create__consignee' %}" class="btn btn-primary">Create New Tag-Consignee</a>
+    </div>
+  </div>
+  {% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-success" role="alert">
+            {{ message }}
+        </div>
+    {% endfor %}
+  {% endif %}
+  {% if error_msg %}
+    <div class="col-12 alert alert-danger" role="alert" style="margin-top: 20px;">
+      {{ error_msg }} 
+    </div>
+  {% endif %}
+  <!-- Table Categories and Tags row -->
+  <div class="row mt-3">
+    <!-- Categories Column -->
+    <div class="col-md-6">
+      <div class="table-responsive">
+        <table id="currentCategories" class="table text-center">
+          <thead>
+            <tr>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Category Name</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Color</th>
+              <th scope="col" style="background-color: #C2C1C1;" data-orderable="false"></th> <!-- Add Actions column header -->
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Iterate over categories and display them -->
+            {% for c in categories %}
+              <tr>
+                <td style="text-align: center;"><span class="badge" id="badge-category-{{ forloop.counter }}">{{ c.Category_Name }}</span></td>
+                <td style="text-align: center;">{{ c.Category_Hex_Color_ID  }}</td>
+                <td>
+                  <button type="button" class="btn btn-primary  btn-view" data-category-id="{{ c.Category_ID }}">View</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Tags Column -->
+    <div class="col-md-6">
+      <div class="table-responsive">
+        <table id="currentTags" class="table text-center">
+          <thead>
+            <tr>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Tag Name</th>
+              <th scope="col" style="background-color: #C2C1C1; text-align: center;">Color</th>
+              <th scope="col" style="background-color: #C2C1C1;" data-orderable="false"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Iterate over consignees and display their associated tags -->
+            {% for consignee in consignees %}
+                <tr>
+                  <td style="text-align: center;"><span class="badge" id="badge-tag-{{ forloop.counter }}">{{ consignee.Consignee_Tag_ID }}</span></td>
+                  <td style="text-align: center;">{{ consignee.Tag_Hex_Color_ID }}</td>
+                  <td>
+                    <button type="button" class="btn btn-primary btn-view-consignee-tag" data-consignee-id="{{ consignee.Consignee_ID }}">View</button>
+                  </td>
+                </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="categoryModal" tabindex="-1" role="dialog" aria-labelledby="categoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="categoryModalLabel">Category Information</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="color: gray;"></button>
+      </div>
+      <div class="modal-body">
+        <div id="customerInfo">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-primary">Edit</a> 
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="consigneeTagModal" tabindex="-1" role="dialog" aria-labelledby="consigneeTagModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="consigneeTagModalLabel">Consignee Information</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="color: gray;"></button>
+      </div>
+      <div class="modal-body">
+        <div id="consigneeInfo">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-primary">Edit</a> 
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.0/js/dataTables.js"></script>
+<script src="https://cdn.datatables.net/2.0.0/js/dataTables.bootstrap5.js"></script>
+<script>
+  $(document).ready(function() {
+    $('.btn-view').click(function() {
+      var categoryId = $(this).data('category-id');
+      var url = '/view_category_details/' + categoryId + '/';
+      
+      $.ajax({
+        url: url,
+        method: 'GET',
+        success: function(response) {
+          $('#categoryModal').find('.modal-body').html(`
+            <div class="row">
+              <!-- 1st row -->
+              <div class="col mx-2">
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Category Name:</strong></h6>
+                      <p class="card-text">${response.Category_Name}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Hex Color ID:</strong></h6>
+                      <p class="card-text">${response.Category_Hex_Color_ID}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Description:</strong></h6>
+                      <p class="card-text">${response.Description}/p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Low Stock Threshold:</strong></h6>
+                      <p class="card-text">${response.Category_Product_Low_Stock_Threshold}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Notes:</strong></h6>
+                      <p class="card-text">${response.Notes}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `);
+          $('#categoryModal').find('.modal-footer').find('a.btn-primary').attr('href', '/update_category/' + response.Category_ID + '/');
+          $('#categoryModal').modal('show');
+        },
+        error: function(xhr, status, error) {
+          console.error(error);
+        }
+      });
+    });
+  });
+
+  $(document).ready(function() {
+  $('.btn-view-consignee-tag').click(function() {
+    var consigneeId = $(this).data('consignee-id');
+    var url = '/view_consignee_details/' + consigneeId + '/';
+
+      $.ajax({
+        url: url,
+        method: 'GET',
+        success: function (response) {
+          $('#consigneeTagModal').find('.modal-body').html(`
+          <div class="row mb-1">
+
+            <!-- 1st colum -->
+            <div class="col mx-2">
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Consignee Tag ID:</strong></h6>
+                    <p class="card-text">${response.Consignee_Tag}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Consignee Name:</strong></h6>
+                    <p class="card-text">${response.Consignee_Name}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Customer Type:</strong></h6>
+                    <p class="card-text">${response.Customer_Type}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Address Line 1:</strong></h6>
+                    <p class="card-text">${response.Address_Line_1}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row mb-2">
+                <div class="col mx-1">
+                  <div class="row mb-2">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Barangay:</strong></h6>
+                        <p class="card-text">${response.Barangay}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Municipality:</strong></h6>
+                        <p class="card-text">${response.Municipality}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col mx-1">
+                  <div class="row mb-2">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Province:</strong></h6>
+                        <p class="card-text">${response.Province}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="card">
+                      <div class="card-body">
+                        <h6 class="card-title"><strong>Zip Code:</strong></h6>
+                        <p class="card-text">${response.Zip_Code}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Primary Contact Number:</strong></h6>
+                    <p class="card-text">${response.Primary_Contact_Number}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Emergency Contact Number:</strong></h6>
+                    <p class="card-text">${response.Emergency_Contact_Number}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Notes:</strong></h6>
+                    <p class="card-text">${response.Notes}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2nd row -->
+            <div class="col mx-2">
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Email Address:</strong></h6>
+                    <p class="card-text">${response.Email_Address}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-2">
+                <div class="col">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Consignment Period Start:</strong></h6>
+                      <p class="card-text">${response.Consignment_Period_Start}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6 class="card-title"><strong>Consignment Period End:</strong></h6>
+                      <p class="card-text">${response.Consignment_Period_End}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-2">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title"><strong>Tag Hex Color ID:</strong></h6>
+                    <p class="card-text">${response.Tag_Hex_Color_ID}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `);
+        $('#consigneeTagModal').find('.modal-footer').find('a.btn-primary').attr('href', '/update_tags/' + response.Consignee_ID + '/');
+        $('#consigneeTagModal').modal('show');
+      },
+      error: function(xhr, status, error) {
+        console.error(error);
+      }
+    });
+  });
+});
+
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Get all badge elements for categories
+    var badges = document.querySelectorAll('.badge');
+    
+    // Loop through each badge element
+    badges.forEach(function(badge) {
+      // Get the corresponding hex color
+      var hexColor = badge.parentElement.nextElementSibling.textContent;
+      
+      // Set the background color of the badge
+      badge.style.backgroundColor = hexColor;
+      
+      // Check if the background color is light
+      if (isColorLight(hexColor)) {
+        badge.style.color = '#000000'; // Set text color to black for light background
+      } else {
+        badge.style.color = '#ffffff'; // Set text color to white for dark background
+      }
+
+      // Add a black outline to the badge
+      badge.style.border = '1px solid #000000';
+    });
+
+    // Function to check if a color is light
+    function isColorLight(color) {
+      // Convert hex color to RGB
+      var r = parseInt(color.substr(1, 2), 16);
+      var g = parseInt(color.substr(3, 2), 16);
+      var b = parseInt(color.substr(5, 2), 16);
+      
+      // Calculate luminance
+      var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      
+      // Check if luminance is greater than 0.5 (light color)
+      return luminance > 0.5;
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,256 @@
+{% extends 'inventoryapp/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<head>
+  <title>My Account</title>
+  <style>
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh; 
+    }
+    .card {
+      width: 50%; 
+      margin: 0 auto; 
+      padding: 20px;
+      background-color: #eee;
+      border: none;
+      border-radius: 5px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .image-column {
+      display: flex;
+      justify-content: center;
+    }
+    .image-column img {
+      width: 50px;
+      height: auto; 
+    }
+    .row {
+      margin-bottom: 15px; 
+    }
+    
+    input[type="text"],
+    input[type="password"] {
+      border: 1px solid #ccc; 
+      border-radius: 5px; 
+      padding: 8px; 
+      background-color: white; 
+      width: 100%; 
+    }
+
+    .btn-edit {
+      font-size: 18px; 
+      padding: 6px 28px; 
+    }
+
+    .invalid-input {
+      border: 1px solid red !important;
+    }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container-fluid">
+      <div class="row p-1" style="background-color: #eee;">
+        <div class="col-md-auto d-flex align-items-center">
+          <h4 class="m-0 mr-3">My Account</h4>
+        </div>
+      </div>
+  </div>
+  <div class="row p-5"></div>
+  <div class="card">
+      <form method="POST" action="{% url 'edit_my_account' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <!-- Image, Name, Role -->
+          <div class="row mt-2 mb-4">
+              <div class="col"><h5>{{user.account.First_Name}} {{user.account.Last_Name}}</h5></div>
+              <div class="col d-flex justify-content-end">
+                  <h6>Role: Administrator</h6>
+              </div>
+          </div>
+
+          <!-- Old user info -->
+          <div class="row">
+              <!-- Username -->
+              <div class="col">
+                  <label for="username">Username</label><br>
+                  <input type="text" id="username" name="username" value="{{user.username}}">
+              </div>
+
+              <div class="col">
+              </div>
+          </div>
+
+          <!-- New password -->
+          {% if error_msg %}
+            <div class="col-12 alert alert-danger" role="alert" style="margin-top: 20px;">
+              {{ error_msg }} 
+            </div>
+          {% endif %}
+          <div class="row">
+              <div class="col">
+                  <label for="new_password">New Password</label><br>
+                  <input type="password" id="new_password" name="new_password" required>
+              </div>
+              <div class="col">
+                  <label for="reenter_new_password">Re-enter New Password</label><br>
+                  <input type="password" id="reenter_new_password" name="reenter_new_password" required>
+              </div>
+          </div>
+          <button type="button" id="toggle-password-btn">Keep old password</button>
+          <div class="mb-3">
+            <div class="row">
+                <div class="col-md-5">
+                    <label for="id_Picture" class="form-label custom-text">Picture:</label>
+            <div id="image-preview">
+                {% if user.account.Profile_Picture %}
+                <div class="profile-image"> 
+                    <img src="{{ user.account.Profile_Picture.url }}" width="50">
+                </div>
+                {% endif %}
+            </div>
+            <div style="display: flex; align-items: center;" >
+                <input type="file" name="profile_picture" accept="image/*" id="id_Picture" class="form-control" style="flex: 1; margin-right: 8px;"> <!-- Added margin-right -->
+                <button type="button" id="remove-image" {% if not user.account.Profile_Picture %}style="display: none;"{% endif %} class="btn btn-outline-danger">Remove Image</button>
+            </div>
+            <input type="hidden" name="removed_profile_picture" id="remove-profile-picture" value='Not'>
+                    <div class="col-md-3"></div> <!-- Invisible column -->
+                    <div class="col-md-3"></div> <!-- Invisible column -->
+                </div>
+            </div>
+
+          <!-- Cancel & Save button row -->
+          <div class="row">
+            <div class="col">
+              <a class="btn btn-danger btn-edit" onclick="showCancelWarningModal()">Cancel</a>
+            </div>
+            <div class="col-md-auto">
+              <button type="submit" class="btn btn-primary btn-edit" onclick="validateForm()">Submit</button>
+            </div>
+          </div>
+      </form>
+  </div>
+
+  <script>
+    // Function to display the cancel warning modal
+    function showCancelWarningModal() {
+            var myModal = new bootstrap.Modal(document.getElementById('cancelWarningModal'));
+            myModal.show();
+        }
+
+    // Function to direct back to current inventoRY
+    function cancelForm() {
+        window.location.href = "{% url 'my_account' %}";
+    }
+
+    // Function to validate form inputs
+    function validateForm() {
+        var inputs = document.querySelectorAll('input[required]');
+        var isValid = true;
+
+        inputs.forEach(function(input) {
+          input.classList.remove('invalid-input'); // Remove any existing invalid-input class
+          if (!input.value.trim()) {
+            isValid = false;
+            input.classList.add('invalid-input'); // Add red outline for empty fields
+          }
+        });
+
+        if (isValid) {
+          // All required fields are filled, prompt for confirmation
+          var confirmation = confirm('Are you sure you want to save a new account?');
+          if (confirmation) {
+            // If user confirms, proceed with saving
+            return true;
+          } else {
+            // If user cancels confirmation, prevent form submission
+            return false;
+          }
+        } else {
+          // There are blank fields, do not proceed and prevent form submission
+          return false;
+        }
+      }
+      document.addEventListener("DOMContentLoaded", function() {
+          const pictureInput = document.getElementById("id_Picture");
+          const imagePreview = document.getElementById("image-preview");
+          const removeImageButton = document.getElementById("remove-image");
+          const imageRemoved = document.getElementById("remove-profile-picture");
+
+          // Function to update the image preview
+          function updatePreview() {
+              const file = pictureInput.files[0];
+              if (file) {
+                  const reader = new FileReader();
+                  reader.onload = function(event) {
+                      const image = new Image();
+                      image.src = event.target.result;
+                      image.width = 50;
+                      imagePreview.innerHTML = '';
+                      imagePreview.appendChild(image);
+                      imageRemoved.value = "Not";
+                      removeImageButton.style.display = "inline-block"; // Show the "Remove Image" button
+                  };
+                  reader.readAsDataURL(file);
+              } else {
+                  imagePreview.innerHTML = '';
+              }
+          }
+
+          // Event listener for input change
+          pictureInput.addEventListener("change", updatePreview);
+
+          // Event listener for remove image button
+          removeImageButton.addEventListener("click", function() {
+              pictureInput.value = null; // Clear the input field
+              removeImageButton.style.display = "none"; // Hide the "Remove Image" button
+              imageRemoved.value = "removed";
+              updatePreview(); // Update the preview to remove the image
+          });
+      });
+      
+      document.addEventListener("DOMContentLoaded", function() {
+        const newPasswordInput = document.getElementById("new_password");
+        const reenterNewPasswordInput = document.getElementById("reenter_new_password");
+        const togglePasswordBtn = document.getElementById("toggle-password-btn");
+
+        // Function to fill password fields with a static string and make them non-required
+        function togglePasswordFields() {
+            // Fill password fields with a static string
+            newPasswordInput.value = "no need password";
+            reenterNewPasswordInput.value = "no need password";
+
+            // Make password fields non-required
+            newPasswordInput.required = false;
+            reenterNewPasswordInput.required = false;
+        }
+
+        // Event listener for button click
+        togglePasswordBtn.addEventListener("click", togglePasswordFields);
+    });
+
+    </script>
+</body>
+
+<div class="modal fade" id="cancelWarningModal" tabindex="-1" aria-labelledby="cancelWarningModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="cancelWarningModalLabel">Warning</h5>
+          </div>
+          <div class="modal-body">
+            Exit form? Any changes you have made may not be saved.
+          </div>
+          <div class="modal-footer">
+            <div class="col">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Close">Back</button>
+            </div>
+            <button type="button" class="btn btn-danger" onclick="cancelForm()">Exit Anyways</button>
+          </div>
+      </div>
+  </div>
+</div>
+{% endblock %}

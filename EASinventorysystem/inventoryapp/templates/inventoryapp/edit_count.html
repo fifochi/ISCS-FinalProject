@@ -1,0 +1,438 @@
+<script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"
+    integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
+{% extends 'inventoryapp/base.html' %}
+{% load static %}
+
+{% block content %}
+<head>
+    <title>Employee Accounts</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.0/css/dataTables.bootstrap5.css">
+</head>
+
+<body class="bg-light">
+    <style>
+        .required:after {
+          content:" *";
+          color: red;
+        }
+    </style>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row p-1" style="background-color: #eee;">
+            <div class="col-md-auto d-flex align-items-center">
+                <h4 class="m-0 mr-3">Edit Inventory Count </h4>
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" id="editCountForm">
+            {% csrf_token %}
+            <!-- First Tab: Choose products  -->
+            <div id="step1">
+                <div class="row m-2">
+                    <div class="col d-flex align-items-center">
+                        <legend>Choose a Product to update its stock</legend>
+                    </div>
+                    <div class="col d-flex justify-content-end">
+                        <a href="{% url 'inventory_update_history' %}" class="btn btn-primary">View Update History</a>
+                    </div>
+                </div>
+                <fieldset>
+                    <div class="row mt-4">
+                        <div class="d-flex justify-content-center">
+                            <!-- Left column for Products Chosen -->
+                            <div class="col-md-6" style="padding-right: 2%; overflow-y: auto; height: 630px;">
+                                <h5>Products Chosen:</h5>
+                                <div class="container mt-2">
+                                    <div class="table-responsive">
+                                        <table class="table table-borderless text-center" id="PO_products">
+                                            <thead class="border-bottom border-dark">
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>ID</th>
+                                                    <th>Stock</th>
+                                                    <th>Reserve Stock</th>
+                                                    <th>To be Received Stock</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="product-list">
+                                                <!-- Products will be appended here as rows -->
+                                            </tbody>
+                                        </table>
+                                        <input type="hidden" name="account" id="account" value="{{ request.user.account.pk }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right column for Product List -->
+                            <div class="col-md-6" style="border-left: 2px solid gray; padding-left: 2%;">
+                                <div class="row mb-3">
+                                    <h5>List of Products:</h5>
+                                    <div class="input-group mb-4 mr-3">
+                                        <input type="text" class="form-control" id="search-input"
+                                            placeholder="Search products..." aria-label="Search products"
+                                            aria-describedby="search-button">
+                                    </div>
+                                </div>
+                                <div class="row mx-4" id="product-list" style="overflow-y: auto; height: 520px;">
+                                    {% for p in products %}
+                                    <div class="row mb-5 product-item" data-id="{{ p.EAS_Product_ID }}">
+                                        <!-- Product information -->
+                                        <div class="col">
+                                            {% if p.Picture %}
+                                            <!-- Image -->
+                                            <img src="{{ p.Picture.url }}" width="120" class="mr-3">
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="col">
+                                            <!-- Product details -->
+                                            <h5>{{ p.Name }}</h5>
+                                            <p>ID: {{ p.EAS_Product_ID }}</p>
+                                            <p><strong>Stock: </strong><span class="product_count">{{ p.Actual_Inventory_Count }}</span></p>
+                                            <input type="hidden" class="product_tbrcount" value="{{ p.Reserved_Inventory_Count }}">
+                                            <input type="hidden" class="product_rescount" value="{{ p.To_Be_Received_Inventory_Count }}">
+                                            <input type="hidden" class="product_pk" value="{{ p.Product_ID }}">
+                                        </div>
+
+                                        <div class="col">
+                                            <!-- Add to Cart button -->
+                                            <button type="button" class="btn btn-primary add-to-cart" data-name="{{ p.Name }}">Add to Cart</button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Buttons for navigation -->
+                    <div class="row mb-3">
+                        <div class="col">
+                            <a href="#" class="btn btn-danger" onclick="showCancelWarningModal()">Cancel</a>
+                        </div>
+                        <div class="col text-end">
+                            <button type="button" class="btn btn-success" onclick="validateQuantityAndNext()">Next</button>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+
+            <!-- Second Tab: Chosen Product Stock Inventory Update -->
+            <div id="step2" style="display: none;">
+                <div class="container-fluid">
+
+                    <!-- Cards for selected products -->
+                    <legend>Products Selected:</legend><br>
+                    <div class="row row-cols-1 row-cols-md-1 g-4" id="selected-products-cards">
+                        <!-- Selected products cards will be dynamically filled here -->
+                    </div>
+
+                    <!-- Buttons: back and cancel -->
+                    <div class="row mt-2">
+                        <div class="row m-3">
+                            <div class="col-md-6">
+                                <a href="#" class="btn btn-primary" onclick="prevStep()">Back</a>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button type="button" class="btn btn-success" id="submit_po" onclick="handleSubmit()">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+    <script>
+        // Function to filter products as user types in the search bar
+        document.getElementById("search-input").addEventListener("input", function () {
+            var searchValue = this.value.trim().toLowerCase();
+            var productItems = document.querySelectorAll(".product-item");
+            var addedProductIds = getAddedProductIds(); // Get product IDs already added to the left column
+            productItems.forEach(function (item) {
+                var productId = item.dataset.id; // Get the product ID from dataset
+                var productName = item.querySelector("h5").textContent.trim().toLowerCase();
+                if (!addedProductIds.includes(productId) && productName.includes(searchValue)) {
+                    item.style.display = ""; // Show the product item if not already added and matches search
+                } else {
+                    item.style.display = "none"; // Hide the product item otherwise
+                }
+            });
+        });
+
+        // Function to retrieve product IDs already added to the left column
+        function getAddedProductIds() {
+            var addedProductIds = [];
+            var productListRows = document.querySelectorAll("#PO_products tbody tr");
+            productListRows.forEach(function (row) {
+                var productId = row.cells[1].textContent.trim(); // Get product ID from the table cell
+                addedProductIds.push(productId);
+            });
+            return addedProductIds;
+        }
+
+
+        function nextStep() {
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('step2').style.display = 'block';
+            populateSelectedProductsCards(); // Populate selected products cards on the second page
+        }
+
+        function validateFormInputs() {
+            var inputs = document.querySelectorAll('#step2 input[required]');
+            var isValid = true;
+
+            inputs.forEach(function(input) {
+                if (!input.value.trim()) {
+                    isValid = false;
+                    input.classList.add('is-invalid');
+                } else {
+                    input.classList.remove('is-invalid');
+                }
+            });
+            return isValid;
+        }
+
+        function handleSubmit() {
+            if (validateFormInputs()) {
+                showConfirmationModal();
+            }
+        }
+
+        // Function to show the confirmation modal
+        function showConfirmationModal() {
+            $('#confirmationModal').modal('show');
+        }
+
+
+
+        function validateQuantityAndNext() {
+            var quantityInputs = document.querySelectorAll('.quantity-input');
+            var isValid = true;
+
+            // Check if there's at least one product in the left column
+            var productListRows = document.querySelectorAll("#PO_products tbody tr");
+            if (productListRows.length === 0) {
+                isValid = false;
+                // Display alert message
+                alert("There should be at least 1 product chosen.");
+            }
+
+            if (isValid) {
+                nextStep(); // Proceed to the next step if all quantities are valid and at least one product is selected
+            }
+        }
+
+        function prevStep() {
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step1').style.display = 'block';
+        }
+
+        // Function to retrieve selected product IDs from the form submission
+        function getSelectedProductIds() {
+            var selectedProductIds = [];
+            var selectedProducts = document.querySelectorAll("#product-list tr");
+            selectedProducts.forEach(function(product) {
+                var productId = product.cells[1].textContent.trim();
+                selectedProductIds.push(productId);
+            });
+            return selectedProductIds;
+        }
+
+
+        // Add to Cart
+        var addToCartButtons = document.querySelectorAll('.add-to-cart');
+        addToCartButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                var productName = button.getAttribute('data-name');
+                var productId = button.parentNode.parentNode.dataset.id;
+                var productPK = button.closest('.product-item').querySelector('.product_pk').value;
+                var reserveCount = button.closest('.product-item').querySelector('.product_rescount').value;
+                var tbrCount = button.closest('.product-item').querySelector('.product_tbrcount').value;
+                var productCount = button.closest('.product-item').querySelector('.product_count').textContent.trim();
+                addToCart(productName, productId, productPK, reserveCount, tbrCount, productCount);
+            });
+        });
+
+        // add a product to the cart
+        function addToCart(productName, productId, productPK, reserveCount, tbrCount, productCount) {
+            // get the table body where products will be appended
+            var productList = document.getElementById("product-list");
+
+            // create a new row for the product
+            var newRow = document.createElement("tr");
+
+            // populate the row with product information
+            newRow.innerHTML = `
+                <td>${productName}</td>
+                <td>${productId}</td>
+                <td>${productCount}</td> 
+                <td>${tbrCount}</td>
+                <td>${reserveCount}</td>
+                <input type="hidden" class="product_pk" value=${productPK}>
+                <td><button type="button" class="btn btn-danger" onclick="removeFromCart(this)">Remove</button></td>
+            `;
+
+            // append the new row to the table body
+            productList.appendChild(newRow);
+
+            // hide the product in the right column list
+            hideProduct(productId);
+        }
+
+        // remove a product from the cart
+        function removeFromCart(row) {
+
+            // Remove the product from the DOM
+            row.parentNode.parentNode.remove();
+
+            // Get the product ID of the removed product
+            var productId = row.parentNode.parentNode.cells[1].textContent.trim();
+
+            // Unhide the product in the right column list
+            unhideProduct(productId);
+        }
+
+        // hide a product in the right column list
+        function hideProduct(productId) {
+            var productItem = document.querySelector(`.product-item[data-id="${productId}"]`);
+            if (productItem) {
+                productItem.style.display = 'none';
+            }
+        }
+
+        // unhide a product in the right column list
+        function unhideProduct(productId) {
+            var productItem = document.querySelector(`.product-item[data-id="${productId}"]`);
+            if (productItem) {
+                productItem.style.display = '';
+            }
+        }
+
+
+        // Function to populate selected products cards on the second page
+        function populateSelectedProductsCards() {
+            var selectedProductIds = getSelectedProductIds();
+
+            var selectedProductsCards = document.getElementById('selected-products-cards');
+            selectedProductsCards.innerHTML = ''; // Clear contents
+
+            var selectedProducts = document.querySelectorAll("#product-list tr"); // Corrected this line
+
+            selectedProducts.forEach(function(product) {
+                var productName = product.cells[0].textContent.trim();
+                var productId = product.cells[1].textContent.trim();
+                var actualCount = product.cells[2].textContent.trim();
+                var reserveCount = product.cells[3].textContent.trim();
+                var tbrCount = product.cells[4].textContent.trim();
+                var productPK = product.querySelector('.product_pk').value;
+
+                // Create card element
+                var card = document.createElement('div');
+                card.classList.add('col');
+                card.innerHTML = `
+                    <div class="card border-dark mb-3">
+                        <div class="card-body" style="border">
+                            <h5 class="card-title">${productName}</h5>
+                            <p class="card-text">ID: ${productId}</p>
+                            <div class="row">
+                                <div class="col">
+                                    <label><strong>Actual Count:</strong></label>
+                                    <p>${actualCount}</p>
+                                </div>
+                                <div class="col">
+                                    <label><strong>Reserved:</strong></label>
+                                    <p>${reserveCount}</p>
+                                </div>
+                                <div class="col">
+                                    <label><strong>To be Received:</strong></label>
+                                    <p>${tbrCount}</p>
+                                </div>
+                                <div class="col"></div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <label class="required" for="updated_count_${productPK}"><strong>Updated Count:</strong></label>
+                                    <input type="number" class="form-control" id="updated_count_${productPK}" name="updated_count_${productPK}" required>
+                                </div>
+                                <div class="col"></div>
+                                <div class="col"></div>
+                                <div class="col"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="required" for="text_report_${productPK}" class="form-label"><strong>Text Report:</strong></label>
+                                <input type="text" class="form-control" id="text_report_${productPK}" name="text_report_${productPK}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="image_report_${productPK}" class="form-label"><strong>Upload Image Report</strong></label>
+                                <input type="file" class="form-control" accept="image/*" id="image_report_${productPK}" name="image_report_${productPK}">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                selectedProductsCards.appendChild(card);
+            });
+        }
+
+        // Call the function to populate selected products cards on page load
+        window.onload = populateSelectedProductsCards;
+
+
+
+
+        // Function to display the cancel warning modal
+        function showCancelWarningModal() {
+            var myModal = new bootstrap.Modal(document.getElementById('cancelWarningModal'));
+            myModal.show();
+        }
+
+        // Function to direct back to current inventoRY
+        function cancelForm() {
+            window.location.href = "{% url 'current_inventory' %}";
+        }
+        
+    </script>
+</body>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel">Confirmation</h5>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to update this product?
+            </div>
+            <div class="modal-footer">
+                <div class="col">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
+                </div>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="document.getElementById('editCountForm').submit()">Yes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel modal -->
+<div class="modal fade" id="cancelWarningModal" tabindex="-1" aria-labelledby="cancelWarningModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelWarningModalLabel">Warning</h5>
+            </div>
+            <div class="modal-body">
+                Exit form? Any changes you have made may not be saved.
+            </div>
+            <div class="modal-footer">
+                <div class="col">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Close">Back</button>
+                </div>
+                <button type="button" class="btn btn-danger" onclick="cancelForm()">Exit Anyways</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

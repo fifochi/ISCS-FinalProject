@@ -1,0 +1,36 @@
+<div>
+  <label for="id_Category">Category:</label>
+  <input type="text" name="product_category" maxlength="4" id="id_Category">
+</div>
+
+<div>
+  <label for="id_Product_Tags">Product Tags:</label>
+  <input type="text" name="product_tags" id="id_Product_Tags">
+</div>
+
+Category=Product_Category,
+Consignee=Product_Tag
+
+
+
+<tbody>
+  {% for product in products %}
+      {% for consignee_product in product.consignee_product_set.all %}
+          {% with consignee=consignee_product.Consignee_ID %}
+              <tr>  
+                  <td class="iname">{{ product.Name }}</td>
+                  <td class="iid">{{ product.EAS_Product_ID }}</td>    
+                  <td class="ipicture"> <img src="{{ product.Picture.url }}" width="50"></td> 
+                  <td class="iact_inv_cnt">{{ product.Actual_Inventory_Count }}</td>
+                  <td class="irsrvd_cnt">{{ product.Reserved_Inventory_Count }}</td>
+                  <td class="ito_be_rcvd_cnt">{{ product.To_Be_Received_Inventory_Count }}</td>    
+                  <td class="icategories">{{ product.Category }}</td>    
+                  <td class="iconsignee">{{ consignee.Consignee_Tag_ID }}</td>  
+                  <td> 
+                      <a href="{% url 'view_product' pk=product.Product_ID %}" type="button" class="btn btn-primary">View</button>
+                  </td>             
+              </tr>
+          {% endwith %}
+      {% endfor %}
+  {% endfor %}
+</tbody>

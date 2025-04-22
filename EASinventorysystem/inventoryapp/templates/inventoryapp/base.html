@@ -1,0 +1,137 @@
+{% load static %}
+<!-- sidebar youtube reference: CodingLab-->
+<!DOCTYPE html>
+<html lang = "en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- ======== Bootstrap ======= -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <!-- ======== CSS ======= -->
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+
+    <!-- ======== Boxicons CSS ======= -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    
+    <title>Inventory System</title>
+</head>
+<body>
+    <nav class="sidebar close">
+        <header>
+            <div class="image-text">
+                <span class="image">
+                    <img src="{% static 'images/EAS_logo.png' %}" alt="logo">  
+                </span>
+
+                <div class="text header-text">
+                    <span class="name">Inventory System</span>
+                    <span id="datetime" class="clock"></span>
+                    <script>
+                        function updateClock() {
+                            var dt = new Date();
+                            var dateTimeString = (("0" + dt.getDate()).slice(-2)) + "/" + (("0" + (dt.getMonth() + 1)).slice(-2)) + "/" + dt.getFullYear() + " " + (("0" + dt.getHours()).slice(-2)) + ":" + (("0" + dt.getMinutes()).slice(-2));
+                            document.getElementById("datetime").innerHTML = dateTimeString;
+                        }
+                        
+                        // Update the clock initially
+                        updateClock();
+                        // Update the clock every second (1000 milliseconds)
+                        setInterval(updateClock, 1000);
+                        </script>
+                </div>
+            </div>
+            
+            <!-- <i class='bx bx-chevron-right toggle'></i> -->
+            <i class='bx bx-menu toggle' id = "btn"></i>
+        </header>
+
+        <div class="menu-bar">
+            <!-- <div class="row">
+                <span class="text nav-text">Welcome, {{user.account}}</span>
+            </div> -->
+            <div class="menu">
+                <ul class="menu-links">
+                    <li class="nav-link">
+                        <span class="text m-5 nav-text">Welcome, {{user.account}}</span>
+                    </li>
+                    <li class="nav-link">
+                        <a href="{% url 'current_inventory' %}">
+                            <i class='bx bxs-cabinet icon' ></i>
+                            <span class="text nav-text">Current Inventory</span>
+                        </a>
+                        <span class="tooltip">Current Inventory</span>
+                    </li>
+                    <li class="nav-link">
+                        <a href="{% url 'categories_consignee_tags' %}">
+                            <i class='bx bxs-purchase-tag icon' ></i>
+                            <span class="text nav-text">Tags and Categories</span>
+                        </a>
+                        <span class="tooltip">Tags and Categories</span>
+                    </li>
+                    <li class="nav-link">
+                        <a href="{% url 'current_customers' %}">
+                            <i class='bx bxs-group icon' ></i>
+                            <span class="text nav-text">Customers</span>
+                        </a>
+                        <span class="tooltip">Customers</span>
+                    </li>
+                    <li class="nav-link">
+                        <a href="{% url 'current_pos' %}">
+                            <i class='bx bxs-cart icon'></i>
+                            <span class="text nav-text">Purchase Orders</span>
+                        </a>
+                        <span class="tooltip">Purchase Orders</span>
+                    </li>
+                    <li class="nav-link">
+                        <a href="{% url 'current_pros' %}">
+                            <i class='bx bxs-basket icon'></i>
+                            <span class="text nav-text">Product Requisitions</span>
+                        </a>
+                        <span class="tooltip">Product Requisitions</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bottom-content">
+                <!-- add if else statement if admin or employee -->
+                {% if request.user.is_superuser %}
+                    <li class="nav-link">
+                        <a href="{% url 'employee_accounts' %}">
+                            <i class='bx bxs-contact icon'></i>
+                                <span class="text nav-text">Employee Accounts</span>
+                        </a>
+                        <span class="tooltip">Employee Accounts</span>
+                    </li>
+                {% endif %}
+                <!-- if else statement end here -->
+                <li class="nav-link">
+                    <a href="{% url 'my_account' %}">
+                        <i class='bx bxs-user icon'></i>
+                        <span class="text nav-text">My Account</span>
+                    </a>
+                    <span class="tooltip">My Account</span>
+                </li>
+                <li class="nav-link">
+                    <a href="{% url 'account_logout' %}">
+                        <i class='bx bxs-log-out icon' ></i>
+                        <span class="text nav-text">Logout</span>
+                    </a>
+                    <span class="tooltip">Logout</span>
+                </li>
+            </div>
+        </div>
+    </nav>
+
+    <section class="home">
+        <div>
+            {% block content %}
+            {% endblock %}
+        </div>
+    </section>
+    <script src="{% static 'base.js' %}"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>
+
