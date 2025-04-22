@@ -9,7 +9,7 @@ ENV PORT 8080
 # Set work directory
 WORKDIR /app
 
-# Install dependencies
+# Install dependenciess
 COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
